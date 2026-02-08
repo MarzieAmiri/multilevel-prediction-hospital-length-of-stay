@@ -10,7 +10,7 @@ The data comes from the 2019 National Inpatient Sample (NIS), which has about 7 
 
 ## Models
 
-I compared three approaches:
+We compared three approaches:
 
 1. **Model 1** — Just patient stuff (age, diagnoses, severity, etc.)
 2. **Model 2** — Patient + hospital characteristics (but treating hospital as a regular variable)
