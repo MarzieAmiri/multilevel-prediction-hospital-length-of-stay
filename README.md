@@ -4,7 +4,7 @@ This repo contains the R code from my research on predicting hospital length of 
 
 ## What's this about?
 
-We wanted to see if adding hospital-level info (bed size, teaching status, etc.) and regional factors could improve LOS predictions. Turns out, it does — hierarchical models that account for these factors outperform simpler approaches.
+We wanted to see if adding hospital-level info (bed size, teaching status, etc.) and regional factors could improve LOS predictions. Turns out, it does. Hierarchical models that account for these factors outperform simpler approaches.
 
 The data comes from the 2019 National Inpatient Sample (NIS), which has about 7 million hospital stays. We sampled 1 million records for this analysis.
 
