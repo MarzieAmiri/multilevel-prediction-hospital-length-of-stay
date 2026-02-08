@@ -1,6 +1,5 @@
 # ============================================================================
 # Multilevel Modeling for Hospital LOS Prediction
-# Author: Marzieh Amiri Shahbazi (RIT)
 # ============================================================================
 #
 # This script fits three models to predict hospital length of stay:
