@@ -18,18 +18,6 @@ We compared three approaches:
 
 Model 3 captures the fact that patients within the same hospital tend to have correlated outcomes. This is the key insight.
 
-## What's in here
-
-```
-├── src/
-│   └── main_analysis.R      # Main analysis script
-├── docs/
-│   └── variable_dictionary.md
-├── install_packages.R       # Run this first to get dependencies
-├── LICENSE
-└── README.md
-```
-
 ## Getting started
 
 You'll need R (4.0+) and these packages:
