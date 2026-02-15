@@ -1,17 +1,4 @@
-# ============================================================================
-# Multilevel Modeling for Hospital LOS Prediction
-# ============================================================================
-#
-# This script fits three models to predict hospital length of stay:
-#   - Model 1: patient variables only (baseline)
-#   - Model 2: patient + hospital features  
-#   - Model 3: hierarchical model with hospital random effects
-#
-# Data: 2019 National Inpatient Sample (NIS)
-# ============================================================================
 
-
-# --- Libraries ---
 library(data.table)
 library(mgcv)
 library(nlme)
@@ -26,32 +13,22 @@ library(plotly)
 library(stringr)
 library(forcats)
 
-
-# --- Config ---
-# Change this to wherever your data lives
 DATA_PATH <- "data/NIS_2019_processed.csv"
 OUTPUT_DIR <- "results/"
 
 set.seed(42)
 
-
-# --- Load and prep data ---
-
 my_data <- fread(DATA_PATH)
 
-# Grab a sample if the full dataset is too big
-# (NIS has ~7 million records, 1 million is enough for this)
+# Grab a sample
 my_data <- my_data[sample(nrow(my_data), 1000000), ]
 
-# Remove outliers — anything above mean + 1.96*SD
-# These are usually coding errors or very unusual cases
 mean_los <- mean(my_data$LOS, na.rm = TRUE)
 sd_los <- sd(my_data$LOS, na.rm = TRUE)
 upper_bound <- mean_los + (1.96 * sd_los)
 my_data <- my_data[my_data$LOS <= upper_bound, ]
 
 # Convert categorical vars to factors
-# (R needs these as factors for the models to work right)
 categorical_vars <- c(
   "DIED", "ELECTIVE", "FEMALE", "I10_INJURY", 
   "PAY1", "RACE", "ZIPINC_QRTL",
@@ -60,14 +37,12 @@ categorical_vars <- c(
 )
 my_data[, (categorical_vars) := lapply(.SD, as.factor), .SDcols = categorical_vars]
 
-# 80/20 train/test split
 train_idx <- sample(1:nrow(my_data), 0.8 * nrow(my_data))
 train_data <- my_data[train_idx, ]
 test_data <- my_data[-train_idx, ]
 
 
-# --- Model 1: Patient variables only ---
-# This is our baseline — what you'd get if you ignored hospital entirely
+# Model 1: Patient variables only
 
 fit_model1 <- function(data) {
   gam(
@@ -84,10 +59,7 @@ model1 <- fit_model1(train_data)
 summary(model1)
 
 
-# --- Model 2: Add hospital features (but no random effects) ---
-# Now we're including hospital characteristics as fixed effects
-# This helps, but treats every hospital as independent
-
+# Model 2: Add hospital features (but no random effects) 
 fit_model2 <- function(data) {
   gam(
     LOS ~ s(AGE, k = 5) + s(I10_NDX, k = 5) + s(I10_NPR, k = 5) + 
@@ -104,10 +76,7 @@ model2 <- fit_model2(train_data)
 summary(model2)
 
 
-# --- Model 3: Hierarchical model with hospital random effects ---
-# This is the key model — it recognizes that patients within a hospital
-# are correlated. Each hospital gets its own intercept.
-
+# Model 3: Hierarchical model with hospital random effects
 fit_model3 <- function(data) {
   gamm(
     LOS ~ s(AGE, k = 5) + s(I10_NDX, k = 5) + s(I10_NPR, k = 5) + 
@@ -125,9 +94,7 @@ model3 <- fit_model3(train_data)
 summary(model3$gam)
 
 
-# --- Evaluate on test set ---
-
-# Helper function to calculate metrics
+# Evaluation
 calc_metrics <- function(actual, predicted) {
   mse <- mean((actual - predicted)^2)
   rmse <- sqrt(mse)
@@ -155,10 +122,7 @@ print(calc_metrics(test_data$LOS, test_data$pred2))
 cat("\nModel 3 (hierarchical):\n")
 print(calc_metrics(test_data$LOS, test_data$pred3))
 
-
-# --- Cross-validation ---
-# 5-fold CV to get more robust estimates
-
+# 5-fold CV 
 run_cv <- function(data, fit_fn, k = 5) {
   folds <- createFolds(data$LOS, k = k, list = TRUE)
   
@@ -189,16 +153,7 @@ print(run_cv(train_data, fit_model1))
 cat("\nModel 2:\n")
 print(run_cv(train_data, fit_model2))
 
-# Note: Model 3 CV takes a while because GAMM is slow
-# Uncomment if you have time:
-# cat("\nModel 3:\n")
-# print(run_cv(train_data, fit_model3))
-
-
-# --- Forest plot ---
-# This creates a nice visualization of the coefficients
-
-# Rename variables so the plot looks publication-ready
+# Forest plot
 rename_vars <- function(term) {
   case_when(
     str_detect(term, "^APRDRG_Severity") ~ paste0("Severity: ", str_extract(term, "\\d$")),
@@ -264,7 +219,6 @@ make_forest_plot <- function(model, title, filename) {
       upper = Estimate + 1.96 * `Std. Error`
     )
   
-  # Plot
   p <- ggplot(coefs, aes(x = Estimate, y = reorder(term, Estimate))) +
     geom_vline(xintercept = 0, linetype = "dashed", color = "gray60") +
     geom_point(size = 2, color = "#2C3E50") +
@@ -280,16 +234,13 @@ make_forest_plot <- function(model, title, filename) {
   return(p)
 }
 
-# Generate plots
 dir.create(OUTPUT_DIR, showWarnings = FALSE)
 make_forest_plot(model1, "Model 1: Patient Variables", paste0(OUTPUT_DIR, "forest_model1.png"))
 make_forest_plot(model2, "Model 2: Patient + Hospital", paste0(OUTPUT_DIR, "forest_model2.png"))
 make_forest_plot(model3, "Model 3: Hierarchical", paste0(OUTPUT_DIR, "forest_model3.png"))
 
 
-# --- Residual diagnostics ---
-# Quick check that the model assumptions aren't totally violated
-
+# Residual diagnostics 
 check_residuals <- function(model, title) {
   if ("gam" %in% class(model)) {
     res <- resid(model)
@@ -310,14 +261,9 @@ check_residuals <- function(model, title) {
   
   return(p)
 }
-
-# Save residual plots
 ggsave(paste0(OUTPUT_DIR, "residuals_model1.png"), 
        check_residuals(model1, "Model 1 Residuals"), width = 8, height = 6)
 ggsave(paste0(OUTPUT_DIR, "residuals_model2.png"), 
        check_residuals(model2, "Model 2 Residuals"), width = 8, height = 6)
 ggsave(paste0(OUTPUT_DIR, "residuals_model3.png"), 
        check_residuals(model3, "Model 3 Residuals"), width = 8, height = 6)
-
-
-cat("\nDone! Results saved to", OUTPUT_DIR, "\n")
